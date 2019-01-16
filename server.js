@@ -7,10 +7,13 @@ let io = require('socket.io').listen(server)
 
 app.set('port',process.env.PORT || 3000)
 
+//Custom story
+let Player = require('./Classes/Player.js');
+
 
 //Remember there is a login for a reason
-let clients = [];
-
+let players = [];
+let sockets = []; 
  /* app.get('/',(req,res)=>{
     res.send(`<h1>Hello World</h1><script src="/socket.io/socket.io.js"></script>
     <script>
@@ -18,12 +21,28 @@ let clients = [];
     </script>`)
 })  */
 io.on("connection", (socket) => {
-    let currentUser;
+    let player = new Player();
+    let thisplayerID = player.id;
     console.log("A client connected")
-    socket.on("USER_CONNECT",() => {
-        console.log("User connected")
-        for (let i = 0; i < clients.length; i++)
-            socket.emit("USER_CONNECTED")
+
+    players[thisplayerID] = player;
+    sockets[thisplayerID] = socket;
+
+
+    socket.emit('register',{id: thisplayerID})
+    socket.emit('spawn', player)
+
+    socket.broadcast.emit('spawn',player)
+
+    for(let playersID in players){
+        if(playersID != thisplayerID)
+            socket.emit('spawn',players[playersID])
+    }
+    socket.on("disconnect",() =>{
+        console.log("User disconnected")
+        delete players[thisplayerID];
+        delete sockets[thisplayerID];
+        socket.broadcast.emit("disconnected",player)
     })
 })
 server.listen(app.get('port'),()=>{
